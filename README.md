@@ -1,9 +1,8 @@
 # Decentralized Virtual CDN Architecture Choices
 
-This document outlines the architecture for a decentralized virtual Content Delivery Network (CDN) with opportunistic offloading. It details the technology stack and the rationale behind each choice, aiming to provide a scalable, efficient, and secure solution capable of handling global traffic with minimized latency and enhanced user experience.
+> This document outlines the architecture for a decentralized virtual Content Delivery Network (CDN) with opportunistic offloading. It details the technology stack and the rationale behind each choice, aiming to provide a scalable, efficient, and secure solution capable of handling global traffic with minimized latency and enhanced user experience.
 
 ## Table of Contents
-
 - [Infrastructure Setup](#infrastructure-setup)
   - [Global Server Deployment](#global-server-deployment)
 - [Database Selection](#database-selection)
@@ -148,3 +147,11 @@ This strategic multi-database approach ensures the architecture achieves a harmo
 - **Tool**: NGINX (C Programming)
 - **Why**: Custom NGINX modules, written in C, allow for specific routing, caching, or security logic customization, integrating deeply with the CDN's functionality.
 - **Source**: [Extending NGINX](https://www.nginx.com/resources/wiki/extending/)
+
+
+# Team
+
+> This is a project for the UC of Cloud Administration with the final score X out of 20
+- José Carvalho up202005827@up.pt
+- Jorge Mendes up202308811@up.pt
+
