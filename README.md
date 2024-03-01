@@ -3,20 +3,25 @@
 > This document outlines the architecture for a decentralized virtual Content Delivery Network (CDN) with opportunistic offloading. It details the technology stack and the rationale behind each choice, aiming to provide a scalable, efficient, and secure solution capable of handling global traffic with minimized latency and enhanced user experience.
 
 ## Table of Contents
+- [Running Instructions](#running-instructions)
 - [Infrastructure Setup](#infrastructure-setup)
-  - [Global Server Deployment](#global-server-deployment)
-- [Database Selection](#database-selection)
-  - [Detailed Explanation](#detailed-explanation)
-- [Storage](#storage)
-- [Content Management](#content-management)
-  - [Caching Mechanism](#caching-mechanism)
-  - [File Systems](#file-systems)
-- [Client-Side Offloading](#client-side-offloading)
-  - [Client-Side Caching](#client-side-caching)
-  - [Opportunistic Offloading & Reverse Proxy Configuration](#opportunistic-offloading--reverse-proxy-configuration)
-- [Security and Privacy](#security-and-privacy)
-- [Deployment and Monitoring](#deployment-and-monitoring)
-- [Programming and Customization](#programming-and-customization)
+    - [Global Server Deployment](#global-server-deployment)
+    - [Database Selection](#database-selection)
+        - [Detailed Explanation](#detailed-explanation)
+    - [Storage](#storage)
+    - [Content Management](#content-management)
+        - [Caching Mechanism](#caching-mechanism)
+        - [File Systems](#file-systems)
+    - [Client-Side Offloading](#client-side-offloading)
+        - [Client-Side Caching](#client-side-caching)
+        - [Opportunistic Offloading & Reverse Proxy Configuration](#opportunistic-offloading--reverse-proxy-configuration)
+    - [Security and Privacy](#security-and-privacy)
+    - [Deployment and Monitoring](#deployment-and-monitoring)
+    - [Programming and Customization](#programming-and-customization)
+- [Team and Evaluation](#team)
+
+## Running Instructions
+
 
 ## Infrastructure Setup
 
