@@ -1,0 +1,46 @@
+project_name: fcupProjects2324
+public_cidr: 192.168.0.0/24
+locations:
+  [
+    { name: "emea", region: "europe-west4" },
+    { name: "us", region: "us-central1" },
+    { name: "asia", region: "asia-northeast1" },
+  ]
+regions:
+  - europe-west4
+  - us-central1
+  - asia-northeast1
+project_id: fcupprojects2324
+bucket_name: cdn-tfstate
+service_account_file: 
+local_service_account_file: 
+path_local_public_key: ../../ssh_keys/idrsa.pub
+username: cdnserver
+image: debian-cloud/debian-11
+scopes: ["cloud-platform"]
+dbpassword: ""
+allow_ip_list:
+  - "149.90.112.98/32"
+hosts:
+  {
+    db:
+      { machine_type: e2-micro, provisioning_model: SPOT, tags: ["ssh", "db"] },
+    webserver:
+      {
+        machine_type: e2-micro,
+        provisioning_model: SPOT,
+        tags: ["ssh", "webserver"],
+      },
+    rproxy:
+      {
+        machine_type: e2-micro,
+        provisioning_model: SPOT,
+        tags: ["ssh", "rproxy"],
+      },
+    webapp:
+      {
+        machine_type: e2-micro,
+        provisioning_model: SPOT,
+        tags: ["ssh", "webapp"],
+      },
+  }

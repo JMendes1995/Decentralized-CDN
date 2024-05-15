@@ -1,0 +1,143 @@
+- hosts: client
+  remote_user: cdnserver
+  become: true
+  vars_files:
+    - ../../cloud_configuration.yml
+  tasks:
+    - name: install golang 1.22.3
+      tags: client_init
+      shell: |
+        wget https://go.dev/dl/go1.22.3.linux-amd64.tar.gz
+        rm -rf /usr/local/go && tar -C /usr/local -xzf go1.22.3.linux-amd64.tar.gz
+        echo "export PATH=$PATH:/usr/local/go/bin" >> ~/.profile
+        echo "export GOPATH=~/.go" >> ~/.profile
+
+    - name: copy sa
+      tags: client
+      ansible.builtin.copy:
+        src: ../../{{service_account_file}}
+        dest: /home/cdnserver/{{service_account_file}}
+        owner: cdnserver
+        group: cdnserver
+        mode: 700
+
+    - name: copy html templates to server
+      tags: client
+      copy:
+        src: "../../../frontendserver/templates"
+        dest: "/home/cdnserver/"
+        mode: 0700
+        owner: cdnserver
+        group: cdnserver
+    - name: copy certificates cert
+      tags: client
+      copy:
+        src: "../../certificates/server.crt"
+        dest: "/home/cdnserver/certificates/"
+        mode: 0700
+        owner: cdnserver
+        group: cdnserver
+    - name: copy certificates key
+      tags: client
+      copy:
+        src: "../../certificates/server.key"
+        dest: "/home/cdnserver/certificates/"
+        mode: 0700
+        owner: cdnserver
+        group: cdnserver
+    - name: copy app
+      tags: client
+      copy:
+        src: "../../../frontendserver/main.go"
+        dest: "/home/cdnserver/main.go"
+        mode: 0700
+        owner: cdnserver
+        group: cdnserver
+    - name: copy go mod
+      tags: client
+      copy:
+        src: "../../../frontendserver/go.mod"
+        dest: "/home/cdnserver/go.mod"
+        mode: 0700
+        owner: cdnserver
+        group: cdnserver
+    - name: copy go.sum
+      tags: client
+      copy:
+        src: "../../../frontendserver/go.sum"
+        dest: "/home/cdnserver/go.sum"
+        mode: 0700
+        owner: cdnserver
+        group: cdnserver
+
+    - name: create config file
+      tags: client
+      shell: |
+        cd /home/cdnserver/
+        /usr/local/go/bin/go build .
+    - name: install golang 1.22.3
+      tags: client_config
+      shell: |
+        touch /lib/systemd/system/clientapp.service
+
+    - name: create env file
+      tags: client_config
+      shell: |
+        privateip=`hostname -I | awk '{print $1}'`
+        tee -a /home/cdnserver/env > /dev/null <<EOT
+        PRIVATE_IP=$privateip
+        LOCAL_MEMCACHED_IP=$privateip
+        BACKEND_ADDRESS={{item}}
+        GCP_SERVICE_ACCOUNT=/home/cdnserver/{{service_account_file}}
+        GCP_PROJECT_ID={{project_id}}
+        EOT
+      with_items: "{{hostvars[inventory_hostname].groups.rproxy[0]}}"
+    - name: update configfile
+      tags: client_config
+      ansible.builtin.blockinfile:
+        path: /lib/systemd/system/clientapp.service
+        insertbefore: "someline:"
+        block: |
+          [Unit]
+          Description=webapp service
+          After=mariadb.service
+          StartLimitIntervalSec=0
+          [Service]
+          User=root
+          Group=root
+          WorkingDirectory=/home/cdnserver/
+          EnvironmentFile=/home/cdnserver/env
+          ExecStart=bash -c  ./frontendserver
+          RestartSec=5
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: edit memcached config
+      tags: memcached
+      shell: |
+        privateip=`hostname -I | awk '{print $1}'`
+        tee -a /etc/memcached.conf > /dev/null <<EOT
+        -d
+
+        logfile /var/log/memcached.log
+
+        -m 64
+
+        -p 11211
+
+        -m 100
+
+        -u memcache
+
+        -l $privateip
+
+        -P /var/run/memcached/memcached.pid
+        EOT
+        service memcached restart
+
+    - name: create config file
+      tags: client_config
+      shell: |
+        systemctl daemon-reload
+        systemctl enable clientapp.service
+        systemctl restart clientapp.service

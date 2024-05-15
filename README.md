@@ -34,11 +34,11 @@
 ## 🛠 Database Selection
 
 - **Tools**: Cassandra, Redis, PostgreSQL
-- **Why**: 
+- **Why**:
   - **Cassandra** for distributed data storage across regions, ensuring high availability and scalability.
   - **Redis** for its in-memory data structure store, used as a database and cache, facilitating quick access to frequently requested data.
   - **PostgreSQL** for reliable transactional data storage, providing robust data integrity features.
-- **Source**: 
+- **Source**:
   - [Cassandra](https://cassandra.apache.org/_/index.html)
   - [Redis](https://redis.io/)
   - [PostgreSQL](https://www.postgresql.org/)
@@ -115,7 +115,7 @@ This strategic multi-database approach ensures the architecture achieves a harmo
 ### File Systems
 
 - **Tools**: ZFS, Btrfs
-- **Why**: 
+- **Why**:
   - **ZFS** and **Btrfs** are chosen for their advanced features such as high reliability, data integrity, and support for high storage capacities. They offer snapshotting and data compression, beneficial for efficiently managing large volumes of content.
 - **Source**: [ZFS](https://openzfs.org/), [Btrfs](https://btrfs.wiki.kernel.org/index.php/Main_Page)
 
@@ -136,7 +136,7 @@ This strategic multi-database approach ensures the architecture achieves a harmo
 ## Security and Privacy
 
 - **Tools**: TLS, OAuth, JWT
-- **Why**: 
+- **Why**:
   - **TLS** ensures secure data transmission.
   - **OAuth** and **JWT** provide robust authentication and authorization mechanisms.
 - **Source**: [TLS](https://www.openssl.org/), [OAuth](https://oauth.net/2/), [JWT](https://jwt.io/)
@@ -160,3 +160,23 @@ This strategic multi-database approach ensures the architecture achieves a harmo
 - José Carvalho up202005827@up.pt
 - Jorge Mendes up202308811@up.pt
 
+
+
+![image info](./resources/cdn_infra_diagram.png)
+```bash
+ansible-playbook -i inventory build_project/ssh_keys.yaml  -vv
+ansible-playbook -i inventory build_project/tls.yaml  -vv
+ansible-playbook -i inventory build_project/main.yaml  --extra-vars "command=apply"   -vv
+./executor.sh base apply emea
+./executor.sh db apply emea
+./executor.sh webserver apply emea
+./executor.sh client apply emea
+./executor.sh base apply asia
+./executor.sh base apply us
+ansible-playbook -i inventory db/main.yaml --tags db_init,db --key-file "../ssh_keys/idrsa" -vv
+ansible-playbook -i inventory webserver/main.yaml --tags webserver_init,webserver,service --key-file "../ssh_keys/idrsa" -vv
+ansible-playbook -i inventory reverse_proxy/main.yaml --tags rproxy_config,rproxy --key-file "../ssh_keys/idrsa" -vv
+ansible-playbook -i inventory client_app/main.yaml --tags client_init,client,client_config,memcached --key-file "../ssh_keys/idrsa" -vv
+ansible-playbook -i inventory build_project/main.yaml  --extra-vars "command=destroy"   -vv
+
+```

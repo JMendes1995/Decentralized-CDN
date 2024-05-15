@@ -1,0 +1,127 @@
+- hosts: rproxy
+  remote_user: cdnserver
+  become: true
+  vars_files:
+    - ../../cloud_configuration.yml
+  tasks:
+    - name: copy certificates cert
+      tags: rproxy
+      copy:
+        src: "../../certificates/server.crt"
+        dest: "/home/cdnserver/certificates/"
+        mode: 0700
+        owner: cdnserver
+        group: cdnserver
+    - name: copy certificates key
+      tags: rproxy
+      copy:
+        src: "../../certificates/server.key"
+        dest: "/home/cdnserver/certificates/"
+        mode: 0700
+        owner: cdnserver
+        group: cdnserver
+    - name: clean nginx server conf
+      tags: rproxy
+      run_once: true
+      shell: |
+        echo "" > /etc/nginx/nginx.conf
+
+    - name: add nginx configuration
+      tags: rproxy_config
+      ansible.builtin.blockinfile:
+        path: /etc/nginx/nginx.conf
+        insertafter: BOF
+        block: |
+          user  www-data;
+          worker_processes  auto;
+          error_log  /var/log/nginx/error.log notice;
+          pid        /var/run/nginx.pid;
+
+          events {
+              worker_connections  1024;
+          }
+
+          http {
+              include       /etc/nginx/mime.types;
+              default_type  application/octet-stream;
+
+              log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                                '$status $body_bytes_sent "$http_referer" '
+                                '"$http_user_agent" "$http_x_forwarded_for"';
+
+              access_log  /var/log/nginx/access.log  main;
+
+              sendfile        on;
+              keepalive_timeout  65;
+              #include /etc/nginx/conf.d/*.conf;
+
+              upstream backend {
+                  #least_conn;
+                  server 10.10.0.3:443;
+              }
+
+              upstream client {
+                  #least_conn;
+                  server 10.10.0.4:443;
+                  server 10.10.0.5:443;
+              }
+              server {
+                  listen       443 ssl;
+                  listen  [::]:443 ssl;
+                  server_name   cdn.fc.up.pt;
+                  ssl_certificate /home/cdnserver/certificates/server.crt;
+                  ssl_certificate_key /home/cdnserver/certificates/server.key;
+
+                  location / {
+                      proxy_pass_request_headers on;
+                      proxy_set_header Host $host;
+                      proxy_set_header X-Real-IP $remote_addr;
+                      proxy_pass https://backend;
+                      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                      proxy_set_header X-Forwarded-Proto $scheme;
+                      proxy_buffering off;
+                      proxy_request_buffering off;
+                      proxy_http_version 1.1;
+                      proxy_intercept_errors on;
+                      proxy_redirect default;
+                      client_max_body_size 4M;
+                  }
+                  location /backend {
+                      proxy_pass_request_headers on;
+                      proxy_set_header Host $host;
+                      proxy_set_header X-Real-IP $remote_addr;
+                      proxy_pass https://backend;
+                      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                      proxy_set_header X-Forwarded-Proto $scheme;
+                      proxy_buffering off;
+                      proxy_request_buffering off;
+                      proxy_http_version 1.1;
+                      proxy_intercept_errors on;
+                      proxy_redirect default;
+                      client_max_body_size 4M;
+                  }
+                  location /api {
+                      proxy_pass_request_headers on;
+                      proxy_set_header Host $host;
+                      proxy_set_header X-Real-IP $remote_addr;
+                      proxy_pass https://backend/api;
+                      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                      proxy_set_header X-Forwarded-Proto $scheme;
+                      proxy_buffering off;
+                      proxy_request_buffering off;
+                      proxy_http_version 1.1;
+                      proxy_intercept_errors on;
+                      proxy_redirect default;
+                      client_max_body_size 4M;
+                  }
+                  error_page   500 502 503 504  /50x.html;
+                  location = /50x.html {
+                      root   /usr/share/nginx/html;
+                  }
+              }
+          }
+    - name: check nginx configuration and start service
+      tags: rproxy_config
+      shell: |
+        nginx -t
+        systemctl restart nginx

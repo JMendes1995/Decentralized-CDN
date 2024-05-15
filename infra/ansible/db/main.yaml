@@ -1,0 +1,143 @@
+- hosts: db
+  remote_user: cdnserver
+  become: true
+  vars_files:
+    - ../../cluster_configuration.yml
+  tasks:
+    - name: partition disk
+      run_once: true
+      tags: db_init
+      shell: |
+        parted --script /dev/sdb 'mklabel gpt'
+
+    - name: format disk
+      run_once: true
+      tags: db_init
+      shell: |
+        parted --script /dev/sdb "mkpart primary 0% 100%"
+
+    - name: crate filesystem
+      run_once: true
+      tags: db_init
+      shell: |
+        mkfs -t ext4 /dev/sdb1
+
+    - name: mount fs
+      run_once: true
+      tags: db_init
+      shell: |
+        mount  /dev/sdb1 /mnt/
+
+    - name: change db dir
+      tags: db_init
+      ansible.builtin.blockinfile:
+        path: /etc/mysql/my.cnf
+        insertbefore: "someline:"
+        block: |
+          [mysqld]:
+          datadir=/mnt/db
+          socket=/mnt/db/mysql.sock
+
+          [client-server]
+          port = 3306
+          socket=/mnt/db/mysql.sock
+
+          # Import all .cnf files from configuration directory
+          !includedir /etc/mysql/mariadb.conf.d/
+    - name: create db storage
+      tags: db_init
+      run_once: true
+      shell: |
+        mkdir /mnt/db
+        chown -R mysql. /mnt/db
+        chmod -R 0700 /mnt/db
+
+    - name: clean mariadb conf
+      tags: db
+      run_once: true
+      shell: |
+        echo "" > /etc/mysql/my.cnf
+
+    - name: change db dir
+      tags: db
+      ansible.builtin.blockinfile:
+        path: /etc/mysql/my.cnf
+        insertbefore: "someline:"
+        block: |
+          [mysqld]:
+          datadir=/mnt/db
+          socket=/mnt/db/mysql.sock
+          bind-address = 0.0.0.0
+
+          [client-server]
+          port = 3306
+          socket=/mnt/db/mysql.sock
+
+          # Import all .cnf files from configuration directory
+          !includedir /etc/mysql/mariadb.conf.d/
+    - name: clean mariadb server conf
+      tags: db
+      run_once: true
+      shell: |
+        echo "" > /etc/mysql/mariadb.conf.d/50-server.cnf
+        mv /var/lib/mysql /mnt/db/
+
+    - name: change db dir
+      tags: db
+      ansible.builtin.blockinfile:
+        path: /etc/mysql/mariadb.conf.d/50-server.cnf
+        insertbefore: "someline:"
+        block: |
+          [server]
+
+          [mysqld]
+          user                    = mysql
+          pid-file                = /run/mysqld/mysqld.pid
+          basedir                 = /usr
+          datadir                 = /mnt/db/mysql/
+          tmpdir                  = /tmp
+          lc-messages-dir         = /usr/share/mysql
+          lc-messages             = en_US
+          skip-external-locking
+
+          bind-address            =  0.0.0.0
+
+          expire_logs_days        = 10
+
+          character-set-server  = utf8mb4
+          collation-server      = utf8mb4_general_ci
+
+          [embedded]
+
+          [mariadb]
+
+          [mariadb-10.5]
+
+    - name: restart maridb service
+      tags: db
+      shell: systemctl restart mariadb.service
+
+    - name: create database
+      tags: db
+      run_once: true
+      shell: |
+        mysql -e"CREATE DATABASE IF NOT EXISTS web_backend"
+
+    - name: create user
+      tags: db
+      run_once: true
+      shell: |
+        mysql -e"CREATE  USER 'webserver'@'%' IDENTIFIED BY 'asfasfasfasd1231i23n'"
+        mysql -e"GRANT ALL PRIVILEGES ON web_backend.files TO 'webserver'@'%'; FLUSH PRIVILEGES;"
+
+    - name: create table
+      tags: db
+      run_once: true
+      shell: |
+        mysql -e"
+          CREATE TABLE IF NOT EXISTS web_backend.files (id BIGINT(20) NOT NULL AUTO_INCREMENT,
+            content_type VARCHAR(255) NOT NULL,
+            file_name VARCHAR(255) NOT NULL,
+            path_to_file VARCHAR(255) NOT NULL,
+            PRIMARY KEY (id)
+          )"

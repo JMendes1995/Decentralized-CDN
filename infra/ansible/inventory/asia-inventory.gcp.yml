@@ -1,0 +1,15 @@
+
+plugin: gcp_compute
+projects:
+  - fcupprojects2324
+region: asia-northeast1
+hostnames:
+  - public_ip
+  - private_ip
+groups:
+  db: "'db' in name"
+  webserver: "'webserver' in name"
+  rproxy: "'rproxy' in name"
+  client: "'client' in name"
+auth_kind: serviceaccount
+service_account_file: ../fcupprojects2324-f7c8146c4b89.json

@@ -1,0 +1,119 @@
+- hosts: webserver
+  remote_user: cdnserver
+  become: true
+  vars_files:
+    - ../../cloud_configuration.yml
+  tasks:
+    - name: install golang 1.22.3
+      tags: webserver_init
+      run_once: true
+      shell: |
+        wget https://go.dev/dl/go1.22.3.linux-amd64.tar.gz
+        rm -rf /usr/local/go && tar -C /usr/local -xzf go1.22.3.linux-amd64.tar.gz
+        echo "export PATH=$PATH:/usr/local/go/bin" >> ~/.profile
+        echo "export GOPATH=~/.go" >> ~/.profile
+
+    - name: copy sa
+      run_once: true
+      tags: webserver
+      ansible.builtin.copy:
+        src: ../../{{service_account_file}}
+        dest: /home/cdnserver/{{service_account_file}}
+        owner: cdnserver
+        group: cdnserver
+        mode: 700
+
+    - name: copy html templates to server
+      tags: webserver
+      copy:
+        src: "../../../webserver/templates"
+        dest: "/home/cdnserver/"
+        mode: 0700
+        owner: cdnserver
+        group: cdnserver
+    - name: copy certificates cert
+      tags: webserver
+      copy:
+        src: "../../certificates/server.crt"
+        dest: "/home/cdnserver/certificates/"
+        mode: 0700
+        owner: cdnserver
+        group: cdnserver
+    - name: copy certificates key
+      tags: webserver
+      copy:
+        src: "../../certificates/server.key"
+        dest: "/home/cdnserver/certificates/"
+        mode: 0700
+        owner: cdnserver
+        group: cdnserver
+    - name: copy app
+      tags: webserver
+      copy:
+        src: "../../../webserver/webapp.go"
+        dest: "/home/cdnserver/webapp.go"
+        mode: 0700
+        owner: cdnserver
+        group: cdnserver
+    - name: copy go mod
+      tags: webserver
+      copy:
+        src: "../../../webserver/go.mod"
+        dest: "/home/cdnserver/go.mod"
+        mode: 0700
+        owner: cdnserver
+        group: cdnserver
+    - name: copy go.sum
+      tags: webserver
+      copy:
+        src: "../../../webserver/go.sum"
+        dest: "/home/cdnserver/go.sum"
+        mode: 0700
+        owner: cdnserver
+        group: cdnserver
+
+    - name: create config file
+      tags: service
+      run_once: true
+      shell: |
+        cd /home/cdnserver/
+        /usr/local/go/bin/go build .
+    - name: install golang 1.22.3
+      tags: webserver
+      run_once: true
+      shell: |
+        touch /lib/systemd/system/webapp.service
+
+    - name: update configfile
+      tags: service
+      ansible.builtin.blockinfile:
+        path: /lib/systemd/system/webapp.service
+        insertbefore: "someline:"
+        block: |
+          [Unit]
+          Description=webapp service
+          After=mariadb.service
+          StartLimitIntervalSec=0
+          [Service]
+          User=root
+          Group=root
+          WorkingDirectory=/home/cdnserver/
+          Environment="DB_USER=webserver"
+          Environment="DB_ADDR=10.10.0.2:3306"
+          Environment="DB_NAME=web_backend"
+          Environment="DB_PWD={{dbpassword}}"
+          Environment="DB_TABLE_NAME=files"
+          Environment="GCP_CLOUD_STORAGE=cdn-content-storage"
+          Environment="GCP_SERVICE_ACCOUNT={{service_account_file}}"
+          ExecStart=bash -c ./webapp
+          RestartSec=5
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: create config file
+      tags: service
+      run_once: true
+      shell: |
+        systemctl daemon-reload
+        systemctl enable webapp.service
+        systemctl restart webapp.service

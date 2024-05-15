@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+
+<body>
+  {{if eq .contentType "image"}}
+  <a href="{{.contentURL}}">
+    <img src="{{.contentURL}}">
+  </a>
+  {{else if eq .contentType "video"}}
+  <video controls>
+    <source src="{{.contentURL}}">
+  </video>
+  {{end}}
+  <form id="deleteContent" action="/delete-content/{{.ID}}" method="post">
+    <button type="submit">Delete Image</button>
+  </form>
+</body>
+
+</html>

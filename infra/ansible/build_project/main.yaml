@@ -1,0 +1,72 @@
+---
+- hosts: 127.0.0.1
+  connection: local
+  vars_files:
+    - ../../cloud_configuration.yml
+  tasks:
+    - name: create inventory file
+      shell: |
+        echo "" > ../inventory/{{item.name}}-inventory.gcp.yml
+        tee -a ../inventory/{{item.name}}-inventory.gcp.yml << EOF
+        plugin: gcp_compute
+        projects:
+          - {{project_id}}
+        region: {{item.region}}
+        hostnames:
+          - public_ip
+          - private_ip
+        groups:
+          db: "'db' in name"
+          webserver: "'webserver' in name"
+          rproxy: "'rproxy' in name"
+          client: "'client' in name"
+        auth_kind: serviceaccount
+        service_account_file: ../{{service_account_file}}
+        EOF
+      with_items: "{{locations}}"
+
+    - name: check if local pub ip is inside of ip's list
+      register: pub_ip
+      command: curl ifconfig.me
+
+    - name: append local pub ip into allow list
+      when: item not in allow_ip_list
+      set_fact:
+        allow_ip_list: "{{ allow_ip_list + [ item ] }}"
+      with_items: "{{ pub_ip.stdout }}/32"
+
+    - name: write vars into tfvars file
+      shell: |
+        echo "" > ../../terraform/vars/{{item.name}}-env.tfvars
+        tee -a ../../terraform/vars/{{item.name}}-env.tfvars << EOF
+        tfstate_bucket_name="{{ bucket_name }}"
+        service_account_file="../{{service_account_file}}"
+        project_name="{{ project_name }}"
+        project_id="{{ project_id }}"
+        region="{{item.region}}"
+        ip_isp_pub={{ allow_ip_list | replace("'",'"') }}
+        path_local_public_key="{{ path_local_public_key }}"
+        username="{{username}}"
+        image="{{image}}"
+        scopes={{scopes | replace("'",'"') }}
+
+        webserver_machine_type="{{hosts.webserver.machine_type}}"
+        webserver_provisioning_model="{{hosts.webserver.provisioning_model}}"
+        webserver_tags={{hosts.webserver.tags| replace("'",'"') }}
+        webapp_machine_type="{{hosts.webapp.machine_type}}"
+        webapp_provisioning_model="{{hosts.webapp.provisioning_model}}"
+        webapp_tags={{hosts.webapp.tags| replace("'",'"') }}
+        db_machine_type="{{hosts.db.machine_type}}"
+        db_provisioning_model="{{hosts.db.provisioning_model}}"
+        db_tags={{hosts.db.tags| replace("'",'"') }}
+        rproxy_machine_type="{{hosts.rproxy.machine_type}}"
+        rproxy_provisioning_model="{{hosts.rproxy.provisioning_model}}"
+        rproxy_tags={{hosts.rproxy.tags| replace("'",'"') }}
+        EOF
+      with_items: "{{locations}}"
+
+    - name: tf_state_bucket
+      shell: |
+        cd ../../terraform/tf_state_bucket/
+        terraform init
+        terraform {{command}} -var="project_id={{project_id}}" -var="tfstate_bucket_name={{bucket_name}}" -auto-approve
