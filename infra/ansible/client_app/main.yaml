@@ -75,7 +75,7 @@
       shell: |
         cd /home/cdnserver/
         /usr/local/go/bin/go build .
-    - name: install golang 1.22.3
+    - name: create service file
       tags: client_config
       shell: |
         touch /lib/systemd/system/clientapp.service
@@ -87,11 +87,16 @@
         tee -a /home/cdnserver/env > /dev/null <<EOT
         PRIVATE_IP=$privateip
         LOCAL_MEMCACHED_IP=$privateip
-        BACKEND_ADDRESS={{item}}
+        BACKEND_ADDRESS={{item.reverse_proxy}}
         GCP_SERVICE_ACCOUNT=/home/cdnserver/{{service_account_file}}
         GCP_PROJECT_ID={{project_id}}
+        GCP_REGION={{item.location}}
         EOT
-      with_items: "{{hostvars[inventory_hostname].groups.rproxy[0]}}"
+      with_items:
+        - {
+            reverse_proxy: "{{hostvars[inventory_hostname].groups.rproxy[0]}}",
+            location: "{{hostvars[inventory_hostname].networkInterfaces[0].subnetwork.region}}",
+          }
     - name: update configfile
       tags: client_config
       ansible.builtin.blockinfile:

@@ -87,5 +87,30 @@ module "ClientAsia" {
   defaul_sa_name     = data.google_compute_default_service_account.default_sa.email
   available_zones    = ["asia-northeast1-a", "asia-northeast1-b", "asia-northeast1W-c"]
   packages           = "dnsutils memcached libmemcached-tools"
-  depends_on = [module.NetworkAsia, module.PrivateAccessSubnetAsia]
+  depends_on         = [module.NetworkAsia, module.PrivateAccessSubnetAsia]
+}
+
+
+
+resource "google_pubsub_topic" "memcached_topic_asia" {
+  name = "init_memcache-${var.region}"
+}
+
+resource "google_pubsub_subscription" "memcached_subscription_asia" {
+  name  = "init_memcache-asia-${var.region}-sub"
+  topic = google_pubsub_topic.memcached_topic_asia.id
+
+  message_retention_duration = "600s"
+  retain_acked_messages      = false
+
+  ack_deadline_seconds = 20
+
+  expiration_policy {
+    ttl = "86400s"
+  }
+  retry_policy {
+    minimum_backoff = "10s"
+  }
+
+  enable_message_ordering = false
 }

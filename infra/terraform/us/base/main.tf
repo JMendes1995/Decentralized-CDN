@@ -87,5 +87,30 @@ module "ClientUS" {
   defaul_sa_name     = data.google_compute_default_service_account.default_sa.email
   available_zones    = ["us-central1-a", "us-central1-b", "us-central1-c"]
   packages           = "dnsutils memcached libmemcached-tools"
-  depends_on = [module.NetworkUS, module.PrivateAccessSubnetUS]
+  depends_on         = [module.NetworkUS, module.PrivateAccessSubnetUS]
+}
+
+
+
+resource "google_pubsub_topic" "memcached_topic_us" {
+  name = "init_memcache-${var.region}"
+}
+
+resource "google_pubsub_subscription" "memcached_subscription_us" {
+  name  = "init_memcache-${var.region}-sub"
+  topic = google_pubsub_topic.memcached_topic_us.id
+
+  message_retention_duration = "600s"
+  retain_acked_messages      = false
+
+  ack_deadline_seconds = 20
+
+  expiration_policy {
+    ttl = "86400s"
+  }
+  retry_policy {
+    minimum_backoff = "10s"
+  }
+
+  enable_message_ordering = false
 }

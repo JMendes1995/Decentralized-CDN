@@ -12,8 +12,7 @@ regions:
   - asia-northeast1
 project_id: fcupprojects2324
 bucket_name: cdn-tfstate
-service_account_file: 
-local_service_account_file: 
+service_account_file:
 path_local_public_key: ../../ssh_keys/idrsa.pub
 username: cdnserver
 image: debian-cloud/debian-11

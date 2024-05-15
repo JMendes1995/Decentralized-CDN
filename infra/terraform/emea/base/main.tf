@@ -29,20 +29,6 @@ module "PrivateAccessSubnet" {
 
 }
 
-# module "NatGateway" {
-#   source = "../modules/gcp/network/nat"
-#
-#   vpc_id          = module.Network.vpc_id
-#   project_name    = var.project_id
-#   router_name     = "natgw-router"
-#   region          = var.region
-#   nat_name        = "natgw"
-#   allocate_option = "AUTO_ONLY"
-#   ranges_to_nat   = "ALL_SUBNETWORKS_ALL_IP_RANGES"
-#   depends_on = [module.Network,
-#   module.PrivateAccessSubnet]
-# }
-
 module "FirewallRulePrivate" {
   source = "../modules/gcp/firewall_rules"
 
@@ -102,7 +88,7 @@ module "RProxy" {
 
   defaul_sa_name  = data.google_compute_default_service_account.default_sa.email
   available_zones = ["europe-west4-a", "europe-west4-b", "europe-west4-c"]
-  packages           = "nginx"
+  packages        = "nginx"
 
   depends_on = [module.Network,
   module.PublicAccessSubnet]
@@ -110,14 +96,13 @@ module "RProxy" {
 
 
 resource "google_pubsub_topic" "memcached_topic" {
-  name = "init_memcache"
+  name = "init_memcache-${var.region}"
 }
 
 resource "google_pubsub_subscription" "memcached_subscription" {
-  name  = "init_memcache-sub"
+  name  = "init_memcache-${var.region}-sub"
   topic = google_pubsub_topic.memcached_topic.id
 
-  # 20 minutes
   message_retention_duration = "600s"
   retain_acked_messages      = false
 
@@ -130,5 +115,5 @@ resource "google_pubsub_subscription" "memcached_subscription" {
     minimum_backoff = "10s"
   }
 
-  enable_message_ordering    = false
+  enable_message_ordering = false
 }

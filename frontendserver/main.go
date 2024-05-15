@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -9,7 +10,6 @@ import (
 	"os"
 	"sync"
 	"time"
-	"crypto/tls"
 
 	"cloud.google.com/go/pubsub"
 	"github.com/bradfitz/gomemcache/memcache"
@@ -18,13 +18,14 @@ import (
 )
 
 var (
-	files_list        []File
-	mc                *memcache.Client
-	private_ip        = os.Getenv("PRIVATE_IP")
-	memcache_local_ip = os.Getenv("LOCAL_MEMCACHED_IP")
-	backend_address   = os.Getenv("BACKEND_ADDRESS")
-	serviceAccountKeyFile = os.Getenv("GCP_SERVICE_ACCOUNT")
-	projectID = os.Getenv("GCP_PROJECT_ID")
+	files_list              []File
+	mc                      *memcache.Client
+	private_ip              = os.Getenv("PRIVATE_IP")
+	memcache_local_ip       = os.Getenv("LOCAL_MEMCACHED_IP")
+	backend_address         = os.Getenv("BACKEND_ADDRESS")
+	serviceAccountKeyFile   = os.Getenv("GCP_SERVICE_ACCOUNT")
+	projectID               = os.Getenv("GCP_PROJECT_ID")
+	region                  = os.Getenv("GCP_REGION")
 	items_cached            []string
 	memecached_remote_nodes []string
 	mutex                   sync.Mutex
@@ -38,10 +39,10 @@ type File struct {
 }
 
 func requestBackend(requesturl string) []File {
- 	tr := &http.Transport{
-        TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-    }
-    client := &http.Client{Transport: tr}
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tr}
 	resp, err := client.Get(requesturl)
 	if err != nil {
 		fmt.Printf("error making http request: %s\n", err)
@@ -57,7 +58,6 @@ func requestBackend(requesturl string) []File {
 }
 
 func home(c *gin.Context) {
-
 	lt := requestBackend(fmt.Sprintf("https://%s/api", backend_address))
 	c.HTML(http.StatusOK, "index.html", gin.H{
 		"Files": lt,
@@ -173,7 +173,6 @@ func initNotificationListener(topicID string) {
 				_, err_remote_check := mc_remote.Get(items_cached[item])
 				if err_remote_check == nil {
 					fmt.Println("item already in cached in the remote node->" + items_cached[item])
-
 				} else {
 					content_data, err_check := mc_local.Get(items_cached[item])
 					if err_check == nil {
@@ -197,7 +196,7 @@ func initNotificationListener(topicID string) {
 		} else {
 			fmt.Println("got own message retransmiting")
 			msg.Ack()
-			publishMessage(string(msg.Data), "init_memcache")
+			publishMessage(string(msg.Data), "init_memcache-"+region)
 
 		}
 	})
@@ -214,7 +213,7 @@ func isInArray(arr []string, target string) bool {
 
 func healthCheck() {
 	for {
-		publishMessage(memcache_local_ip, "init_memcache")
+		publishMessage(memcache_local_ip, "init_memcache-"+region)
 		time.Sleep(10 * time.Minute)
 	}
 }
@@ -222,7 +221,7 @@ func healthCheck() {
 func main() {
 	// go publishMessage(memcache_local_ip, "init_memcache")
 	go healthCheck()
-	go initNotificationListener("init_memcache")
+	go initNotificationListener("init_memcache-" + region)
 
 	go func() {
 		r := gin.Default()
