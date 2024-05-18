@@ -1,4 +1,4 @@
-# Decentralized Virtual CDN 
+# Decentralized CDN 
 
 > This project was developed by Jorge Mendes up202308811@up.pt and José Carvalho up202005827@fc.up.pt As part of the semester project for the Cloud System Administration class in the Master's program in Network and Information Systems Engineering at the Faculty of Science, University of Porto, This document outlines the architecture for a decentralized virtual Content Delivery Network (CDN) with opportunistic offloading. It details the technology stack and the rationale behind each choice, aiming to provide a scalable, efficient, and secure solution capable of handling global traffic with minimized latency and enhanced user experience.
 
