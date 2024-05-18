@@ -52,10 +52,13 @@ Security is a highly important matter that requires well-defined architecture de
 
 #### Application and Performance analysis
 The backend server is accessed through the reverse proxy that in turn forwards the request to the backend server in the path `https://<rproxy_ip>/backend` and will be presented with a web form which allows users to upload multiform files (images, videos, txt, etc...), 
+
 ![image info](./resources/backend_ui.png) 
+
 After the user successfully uploads the file it will be stored in a bucket  and the metadata related to the file like the filename, the file type(image, video and other) and the bucket path will be inserted into the database
 
 Furthermore, the backend also provides a interface `https://<rproxy_ip>/api` where he can select files, remove files and access Rest-API.
+
 ![image info](./resources/backend_api.png) 
 
 On the client side will the webserver in the localhost query the Rest-API to present the list of files available to download.
@@ -65,10 +68,13 @@ On the client side will the webserver in the localhost query the Rest-API to pre
 When the user requests a file that is not present in the local Memcached server, the client-server requests the file stored in the cloud storage bucket. This process takes some time, especially before caching the content and even more in regions outside of Europe.
 
 ![image info](./resources/europe_performance.png)
+
 The performance for European clients is smooth with request times of `72ms` which is great, after caching the content, and the request times.
+
 ![image info](./resources/cache_hit.png)
 
 On the other hand, for the US and Asia region, the first request time is expectedly higher with `1s` and `3s` of response time respectively. However, after caching the content the following requests-times dropped substationally.
+
 ![image info](./resources/us_performance.png)
 ![image info](./resources/asia_performance.png)
 
