@@ -214,7 +214,7 @@ func isInArray(arr []string, target string) bool {
 func healthCheck() {
 	for {
 		publishMessage(memcache_local_ip, "init_memcache-"+region)
-		time.Sleep(10 * time.Minute)
+		time.Sleep(2 * time.Minute)
 	}
 }
 
